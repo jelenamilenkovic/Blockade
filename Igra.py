@@ -1,8 +1,10 @@
 from Tabla import Tabla
 from Player import Player
 from Polje import Polje
+from re import fullmatch
+from copy import deepcopy
 
-def validacijadimenzija(vrsta,limit):
+def validacija_dimenzija(vrsta,limit):
         age=None
         while age is None:
             input_value = input("Unesite {v} broj manji od {l} za dimenziju table: ".format(v=vrsta,l=limit))
@@ -21,150 +23,195 @@ def validacijadimenzija(vrsta,limit):
             except ValueError:
                 print("{input} nije broj, molimo Vas unesite broj".format(input=input_value))
 class Igra:
-    def __init__(self,dimX,dimY):
+    def __init__(self):
             
-            self.Tabela=Tabla(dimX,dimY)
-            #self.startY=[]
-            #self.Tabela=Tabla
-            self.racunar=False
+            self.tabela=None
+            self.n=None
+            self.m=None
             self.IgracX=None
             self.IgracO=None
-
-    def dalijestartnopolje(self,a,b):
-        True if(self.Tabela.matrica[a][b].startnopolje==True) else False
-
-    def zapocniigru(self):
-        self.Tabela.InicijalizacijaZidova()
-        self.Tabela.Stampanje()
+    #startna funkcija koja se poziva pri pokretanju programa
+    #kako bi se objekti inicijalizovali
+    def zapocni_igru(self):
+        self.n=validacija_dimenzija("paran",22)
+        self.m=validacija_dimenzija("neparan",28)
         brojzelenih=int(input("Unesite broj zelenih zidova po igracu: "))
         brojplavih=int(input("Unesite broj plavih zidova po igracu: "))
+        p=input("Da li zelite da prvo igra racunar?[DA/NE] ")
+        #self.postavi_racunar(p)
         print("Unesite startne pozicije X igraca: ")
         list1=[]
         for i in range(0, 2):
-                    ele = [int(input()), int(input())]
+                    ele = [int(input(),16), int(input(),16)]
                     list1.append(ele)
         self.IgracX=Player("X",list1[0],list1[1],brojplavih,brojzelenih)
-       
-        print(self.IgracX)
         print("Unesite startne pozicije Y igraca: ")
         list2=[]
         for i in range(0, 2):
-                    ele = [int(input()), int(input())]
+                    ele = [int(input(),16), int(input(),16)]
                     list2.append(ele)
-       
         self.IgracO=Player("O",list2[0],list2[1],brojplavih,brojzelenih)
-        self.Tabela.postaviPolje((list1[0])[0],(list1[0])[1],self.IgracX.lista[0])
-        self.Tabela.postaviPolje((list1[1])[0],(list1[1])[1],self.IgracX.lista[1])
-        self.Tabela.postaviPolje((list2[0])[0],(list2[0])[1],self.IgracO.lista[0])
-        self.Tabela.postaviPolje((list2[1])[0],(list2[1])[1],self.IgracO.lista[1])
-        self.racunar=True
-        self.Tabela.Stampanje()
-    def proverizidove(self,posX,posY,boja):
-        if(boja=="Z"):
-            if(self.IgracO.s1(posX,posY) or self.IgracO.s2(posX,posY) or self.IgracO.s1(posX-1,posY) or self.IgracO.s2(posX-1,posY)
-           or self.IgracX.s1(posX,posY) or self.IgracX.s2(posX,posY) or self.IgracX.s1(posX-1,posY) or self.IgracX.s2(posX-1,posY)):
+        self.tabela=Tabla(self.n,self.m,list1,list2)
+        self.tabela.postavi_polje((list1[0])[0],(list1[0])[1],"X")
+        self.tabela.postavi_polje((list1[1])[0],(list1[1])[1],"X")
+        self.tabela.postavi_polje((list2[0])[0],(list2[0])[1],"O")
+        self.tabela.postavi_polje((list2[1])[0],(list2[1])[1],"O")
+        self.tabela.stampanje()
+    #provera da li je doslo do kraja igre tj.
+    #da li je neki od pesaka dosao na pocetnu poziciju pesaka suprotnog igraca
+    def da_li_je_kraj(self):
+      return self.tabela.da_li_je_kraj(self.IgracX,self.IgracO)
+    #funkcija koja se poziva kada je potrebno odigrati potez
+    #pozivaju se i funkcije koje proveravaju da li je moguce odigrati potez
+    #definisanim parametrima sa inputa
+    def odigraj_potez(self,igrac):
+        potez=' '
+        zid_fleg=False
+        p_fleg=False
+        while(zid_fleg and p_fleg)==False:
+            print("Unesite potez u formatu: [X/O 0/1] [x_pesaka y_pesaka] [Z/P x_zida y_zida]")
+            potez=input("Potez:")
+            if not fullmatch("\[[XO] [01]] \[[1-9A-Z] [1-9A-Z]]?( \[[ZP] [1-9A-Z] [1-9A-Z]])", potez):
+               print("Nevalidan format! Format mora biti: [X/O 0/1] [x_pesaka y_pesaka] [Z/P x_zida y_zida]")
+            else:
+                zid_fleg=self.proveri_zid(potez[1],potez[13],potez[15],potez[17])
+                p_fleg=self.proveri_pesaka(potez[1],potez[3],potez[7],potez[9])
+        self.moguce_situacije("X")
+        #self.promena_stanja(potez)
+        #self.tabela.stampanje()
+        #self.promena_stanja(potez)
+    #proveravamo da li se specificiran zid moze postaviti za zeljenim koordinatama
+    #vracamo True ukoliko je to moguce
+    def proveri_zid(self,igrac,boja,posX,posY):
+        if(self.preostali_zidovi(igrac)!=0):
+                h1=int(posX,16)
+                h2=int(posY,16)
+                if(str(boja)!='Z' and str(boja)!='P'):
+                    print("Format boje nije odgovarajuci, pokusajte ponovo: ")
+                    return False
+                elif(h1>=self.tabela.dimX or h2>=self.tabela.dimY):
+                    print("Koordinate zida su vece od dimenzije table, pokusajte ponovo: ")
+                    return False
+                elif(self.da_li_je_startno(h1,h2,boja)==True):
+                    print("Startno polje se ne moze ograditi!")
+                    return False
+                elif(self.tabela.postavi_zid(h1,h2,boja)==False):
+                    print("Nemoguce je postaviti zid na poziciji gde se on vec nalazi!")
+                    return False
+                elif((self.IgracX.proveri_zid(boja) if(igrac=='X') else self.IgracO.proveri_zid(boja))==False):
+                    print("Nemate vise zidova ove boje, pokusajte sa nekom drugom!")
+                    return False
+                else:
+                    return True
+        else:
+            print("Nemate vise zidova")
+            return False
+    #vraca ukupni broj preostalih zidova jednog igraca
+    def preostali_zidovi(self,igrac):
+     return self.IgracX.brojPlavihZidova + self.IgracX.brojZelenihZidova  if(igrac=='X') else self.IgracO.brojPlavihZidova + self.IgracO.brojZelenihZidova
+    #proveravamo da li ne ogradjujemo startno polje posto pravila igre to ne dozvoljavaju
+    def da_li_je_startno(self,posX,posY,boja):
+        if(boja=="P"):
+            if(self.IgracO.s1(posX,posY) or self.IgracO.s2(posX,posY) or self.IgracO.s1(posX+1,posY+1) or 
+            self.IgracO.s2(posX+1,posY+1) or self.IgracO.s1(posX+1,posY) or self.IgracO.s2(posX+1,posY) or 
+            self.IgracO.s1(posX,posY+1) or self.IgracO.s2(posX,posY+1) or self.IgracX.s1(posX,posY) or 
+            self.IgracX.s2(posX,posY) or self.IgracX.s1(posX+1,posY+1) or self.IgracX.s2(posX+1,posY) or 
+            self.IgracX.s2(posX+1,posY+1) or self.IgracX.s1(posX+1,posY) or 
+            self.IgracX.s1(posX,posY+1) or self.IgracX.s2(posX,posY+1)):
                 return True
             else:
                 return False
-        elif(boja=="P"):
-            if(self.IgracO.s1(posX,posY) or self.IgracO.s2(posX,posY) or self.IgracO.s1(posX,posY-1) or self.IgracO.s2(posX,posY-1)
-           or self.IgracX.s1(posX,posY) or self.IgracX.s2(posX,posY) or self.IgracX.s1(posX,posY-1) or self.IgracX.s2(posX,posY-1)):
+        elif(boja=="Z"):
+            if(self.IgracO.s1(posX,posY) or self.IgracO.s2(posX,posY) or self.IgracO.s1(posX+1,posY) or self.IgracO.s2(posX+1,posY) 
+            or self.IgracO.s1(posX+1,posY+1) or self.IgracO.s2(posX+1,posY+1) or self.IgracO.s1(posX,posY+1) or self.IgracO.s2(posX,posY+1)
+            or self.IgracX.s1(posX,posY) or self.IgracX.s2(posX,posY) or self.IgracX.s1(posX+1,posY) or self.IgracX.s2(posX+1,posY) 
+            or self.IgracX.s1(posX+1,posY+1) or self.IgracX.s2(posX+1,posY+1) or self.IgracX.s1(posX,posY+1) or self.IgracX.s2(posX,posY+1)
+            ):
                 return True
             else:
                 return False
         else:
             return False
-            
-    def stampajstartnepozicije(self):
-            print("Startne pozicije prvog igraca",self.startX)
-    def pomeripiona(self,t):
-        print(t,":")
-        p = [x for x in input("Izaberite igraca(0||1): ").split()]
-        i=None
-        j=None
-        while(i==None and j==None):
-            i,j=[int(x) for x in input("Izaberite koordinate novog polja: ").split()]
+    #proveravamo da li je moguce pomeriti odredjenog pesaka na zeljeno polje
+    def proveri_pesaka(self,t,p,i,j):
+            i=int(i,16)
+            j=int(j,16)
             try:
-                for l in self.IgracO.lista:
-                    if(l.trY==j and l.trX==i):
-                        i=None 
-                        j=None
-                        print("Na izabranom polju se vec nalazi O igrac")
-                for l in self.IgracX.lista:
-                    if(l.trY==j and l.trX==i):
-                        i=None
-                        j=None
-                        print("Na izabranom polju se vec nalazi X igrac")
+                for l in self.tabela.Opoz:
+                    if(l[0]==i and l[1]==j):
+                        print("Na izabranom polju se vec nalazi O igrac!")
+                        return False
+                for l in self.tabela.Xpoz:
+                    if(l[0]==i and l[1]==j):
+                        print("Na izabranom polju se vec nalazi X igrac!")
+                        return False
+                if self.tabela.validno_polje(i,j,t,int(p))==False:
+                    print("Ne moze se preci na to polje!")
+                    return False
+                else: return True
             except ValueError:
                 print("Molimo Vas unesite brojeve")
-        if(t=="X"):
-            if(p=='0'):
-                self.Tabela.pomeriPiona(i,j,self.IgracX.lista[0]) 
-            else:
-                self.Tabela.pomeriPiona(i,j,self.IgracX.lista[1])
-        else:
-            if(p=='0'): 
-                 self.Tabela.pomeriPiona(i,j,self.IgracO.lista[0])
-            else:
-                self.Tabela.pomeriPiona(i,j,self.IgracO.lista[1])
-        
-    def postavizid(self,igrac):
-        boja='A'
-        posX=None
-        posY=None
-        while(posX==None or posY==None or (boja!='Z' or boja!='P')):
-            boja,posX,posY=[x for x in input("Izaberite boju i pocetno polje zida: ").split()]
-            if(str(boja)!='Z' and str(boja)!='P'):
-                print("Format boje nije odgovarajuci, pokusajte ponovo: ")
-                posX=None
-            elif(int(posX)>=self.Tabela.dimX or int(posY)>=self.Tabela.dimY):
-                print("Koordinate zida su vece od dimenzije table, pokusajte ponovo: ")
-                posX=None
-            elif(self.proverizidove(int(posX),int(posY),boja)==True):
-                print("Startno polje se ne moze ograditi")
-                posX=None
-            elif(self.Tabela.postavizid(int(posX),int(posY),boja)==False):
-                print("Nemoguce je postaviti zid na poziciji gde se on vec nalazi")
-                posX=None
-            else:
-                break
-            
-        self.IgracX.oduzmizid(boja) if(igrac=='X') else self.IgracO.oduzmizid(boja)
-        self.IgracX.stampanje() if(igrac=='X') else self.IgracO.stampanje()
-                
-    def dalijekraj(self):
-        if((self.IgracX.s1(self.IgracO.lista[0].trX,self.IgracO.lista[0].trY) 
-        and self.IgracX.s2(self.IgracO.lista[1].trX,self.IgracO.lista[1].trY)) or 
-        (self.IgracX.s1(self.IgracO.lista[1].trX,self.IgracO.lista[1].trY) 
-        and self.IgracX.s2(self.IgracO.lista[0].trX,self.IgracO.lista[0].trY))):
-            print("Pobednik je igrac O. Igra je zavrsena!")
+                return False
             return True
-        elif((self.IgracO.s1(self.IgracX.lista[0].trX,self.IgracX.lista[0].trY) 
-        and self.IgracO.s2(self.IgracX.lista[1].trX,self.IgracX.lista[1].trY)) or 
-        (self.IgracO.s1(self.IgracX.lista[1].trX,self.IgracX.lista[1].trY) 
-        and self.IgracO.s2(self.IgracX.lista[0].trX,self.IgracX.lista[0].trY))):
-            print("Pobednik je igrac X. Igra je zavrsena!")
-            return True
-        else: return False
+    #ovo je funkcija obicnog igraca(ne kompjutera) koja se poziva nakon sto se proveri i dokaze da je potez apsolutno validan
+    #poziva se uokviru funkcije odigraj_potez() i prosledjuje sa taj validan input potez 
+    def promena_stanja(self,potez):
+        self.tabela.potez_pesak(int(potez[7]),int(potez[9]),potez[1],int(potez[3])) 
+        self.IgracX.oduzmi_zid(potez[13]) if(potez[1]=='X') else self.IgracO.oduzmi_zid(potez[13])
+        self.tabela.potez_zid(potez[15],potez[17],potez[13])
+        self.tabela.stampanje()
+    #ovo je funkcija slicna prethodnoj, menja trenutno stanje, ali je poziva kompjuter
+    #samim tim se uokviru nje ne poziva promena broja zidova, zato sto ova funkcija 
+    def nova_situacija(self,i,j,boja,x,y):
+        nova_tabela=deepcopy(self.tabela)
+        nova_tabela.potez_pesak(int(i),int(j),"O",int('0'))
+        nova_tabela.potez_zid(x,y,boja)
+      #  nova_tabela.stampanje()
+        return nova_tabela
+    def moguce_situacije(self,igrac):
+        lista_boja=["Z","P"]
+        lista_mogucih_poteza=[]
+        potez=' '
+        potez="[X 0] [1 1] [P 1 1]"
+        if(igrac=="X"):
+            for el in range(2):
+                trX=self.tabela.Xpoz[el][0]-1
+                trY=self.tabela.Xpoz[el][1]-1
+                for boja in lista_boja:
+                    for i in range(trX-2,trX+2):
+                        for j in range(trY-2,trY+2):
+                            if self.granice_dimenzija(i-1,j-1):
+                                if self.proveri_pesaka("X",el,str(i),str(j)):
+                                        for x in range(1,self.tabela.dimX):
+                                            for y in range(1,self.tabela.dimY):
+                                                if self.proveri_zid("X",boja,str(x),str(y)):
+                                                    lista_mogucih_poteza.append(self.nova_situacija(str(i),str(j),boja,str(x),str(y)))
+        print(len(lista_mogucih_poteza))
+      
+                                                
 
-        
-        
+    def granice_dimenzija(self,i,j):
+        return False if i<0 and i>self.tabela.dimX and j<0 and j>self.tabela.dimY else True
+    def postavi_racunar(self,p):
+       if(p=="DA" or "da"):
+            self.IgracX.racunar=True 
+       else:  
+           self.IgracO.racunar=True
+    
+    
             
 if __name__ == '__main__':
-    n=validacijadimenzija("paran",22)
-    m=validacijadimenzija("neparan",28)
-    i=Igra(n,m)
-    Igra.zapocniigru(i)
-    while(i.dalijekraj==False):
+   # n=validacija_dimenzija("paran",22)
+   # m=validacija_dimenzija("neparan",28)
+   # i=Igra(n,m)
+    i=Igra()
+    Igra.zapocni_igru(i)
+    
+    while(i.da_li_je_kraj()==False):
         
-            
-            i.pomeripiona("X")
-            i.postavizid("X")
-            i.Tabela.Stampanje() 
+        i.odigraj_potez('X')
 
-            i.pomeripiona("O")
-            i.postavizid("O")
-            i.Tabela.Stampanje() 
+        i.odigraj_potez('O')
         
     print("Igra je zavrsena!")
 

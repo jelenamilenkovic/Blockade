@@ -9,7 +9,4 @@ class Polje:
             self.gornjizid="-"
             self.donjizid="-"
 
-    def dalijestartno(self):
-        return True if(self.startnoPolje==True) else False
-    def promenizid(self):
-        self.desnizid="I"
+    
