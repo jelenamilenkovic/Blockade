@@ -13,7 +13,7 @@ class Tabla:
         print(self.Xpoz[0],self.Xpoz[1])
         print(self.Opoz[0],self.Opoz[1])
 
-             
+    
     def postavi_polje(self,posX,posY,tekst):
         self.matrica[posX-1][posY-1].vrednost=tekst
     def da_li_je_kraj(self,IgracX,IgracO):
@@ -143,7 +143,9 @@ class Tabla:
         if(boja=="Z"):
            return True if(self.matrica[m-1][n-1].desnizid!="I" and self.matrica[m][n-1].desnizid!="I") else False
         elif(boja=="P"):
-           return True if(self.matrica[m-1][n-1].donjizid!="=" and self.matrica[m-1][n].donjizid!="=") else False
+            if(posY<self.dimY):
+                return True if(self.matrica[m-1][n-1].donjizid!="=" and self.matrica[m-1][n].donjizid!="=") else False
+            else: return False
         else:
             return False
         

@@ -1,6 +1,7 @@
 from Tabla import Tabla
 from Player import Player
 from Polje import Polje
+import itertools
 from re import fullmatch
 from copy import deepcopy
 
@@ -22,6 +23,9 @@ def validacija_dimenzija(vrsta,limit):
                     print("Parnost dimenzije nije odgovarajuca, pokusajte ponovo")
             except ValueError:
                 print("{input} nije broj, molimo Vas unesite broj".format(input=input_value))
+def konverzija_zidova( karakter):
+        lista_brojeva=['0','1','2','3','4','5','6','7','8','9']
+        return int(karakter)  if karakter in lista_brojeva else ord(karakter)-ord('A')+10
 class Igra:
     def __init__(self):
             
@@ -76,7 +80,7 @@ class Igra:
             else:
                 zid_fleg=self.proveri_zid(potez[1],potez[13],potez[15],potez[17])
                 p_fleg=self.proveri_pesaka(potez[1],potez[3],potez[7],potez[9])
-        self.moguce_situacije("X")
+        self.moguce_situacije(igrac)
         #self.promena_stanja(potez)
         #self.tabela.stampanje()
         #self.promena_stanja(potez)
@@ -84,16 +88,13 @@ class Igra:
     #vracamo True ukoliko je to moguce
     def proveri_zid(self,igrac,boja,posX,posY):
         if(self.preostali_zidovi(igrac)!=0):
-                h1=int(posX,16)
-                h2=int(posY,16)
+                h1= posX if isinstance(posX,int) else konverzija_zidova(posX)
+                h2= posY if isinstance(posY,int) else konverzija_zidova(posY)
                 if(str(boja)!='Z' and str(boja)!='P'):
                     print("Format boje nije odgovarajuci, pokusajte ponovo: ")
                     return False
-                elif(h1>=self.tabela.dimX or h2>=self.tabela.dimY):
+                elif(h1>self.tabela.dimX or h2>self.tabela.dimY):
                     print("Koordinate zida su vece od dimenzije table, pokusajte ponovo: ")
-                    return False
-                elif(self.da_li_je_startno(h1,h2,boja)==True):
-                    print("Startno polje se ne moze ograditi!")
                     return False
                 elif(self.tabela.postavi_zid(h1,h2,boja)==False):
                     print("Nemoguce je postaviti zid na poziciji gde se on vec nalazi!")
@@ -134,8 +135,8 @@ class Igra:
             return False
     #proveravamo da li je moguce pomeriti odredjenog pesaka na zeljeno polje
     def proveri_pesaka(self,t,p,i,j):
-            i=int(i,16)
-            j=int(j,16)
+            i= i if isinstance(i,int) else konverzija_zidova(i)
+            j= j if isinstance(j,int) else konverzija_zidova(j)
             try:
                 for l in self.tabela.Opoz:
                     if(l[0]==i and l[1]==j):
@@ -162,36 +163,62 @@ class Igra:
         self.tabela.stampanje()
     #ovo je funkcija slicna prethodnoj, menja trenutno stanje, ali je poziva kompjuter
     #samim tim se uokviru nje ne poziva promena broja zidova, zato sto ova funkcija 
-    def nova_situacija(self,i,j,boja,x,y):
+    def nova_situacija(self,i,j,pesak,igrac,boja,x,y):
         nova_tabela=deepcopy(self.tabela)
-        nova_tabela.potez_pesak(int(i),int(j),"O",int('0'))
+        nova_tabela.potez_pesak(i,j,igrac,pesak)
         nova_tabela.potez_zid(x,y,boja)
       #  nova_tabela.stampanje()
         return nova_tabela
     def moguce_situacije(self,igrac):
-        lista_boja=["Z","P"]
-        lista_mogucih_poteza=[]
-        potez=' '
-        potez="[X 0] [1 1] [P 1 1]"
+        combined=[]
+        lista_pesak=self.lista_mogucih_pomeraja(igrac)
+        lista_zid=self.lista_mogucih_zidova(igrac)
+        combined=list(itertools.product(lista_pesak,lista_zid))
+        for el in combined:
+           
+            self.nova_situacija(el[0][0],el[0][1],el[0][2],igrac,el[1][0],el[1][1],el[1][2])
+        f=len(combined)
+        print(f)
+    def lista_mogucih_pomeraja(self,igrac):
+        lista_pomeraja=[]
         if(igrac=="X"):
             for el in range(2):
-                trX=self.tabela.Xpoz[el][0]-1
-                trY=self.tabela.Xpoz[el][1]-1
-                for boja in lista_boja:
-                    for i in range(trX-2,trX+2):
-                        for j in range(trY-2,trY+2):
-                            if self.granice_dimenzija(i-1,j-1):
-                                if self.proveri_pesaka("X",el,str(i),str(j)):
-                                        for x in range(1,self.tabela.dimX):
-                                            for y in range(1,self.tabela.dimY):
-                                                if self.proveri_zid("X",boja,str(x),str(y)):
-                                                    lista_mogucih_poteza.append(self.nova_situacija(str(i),str(j),boja,str(x),str(y)))
-        print(len(lista_mogucih_poteza))
+                trX=self.tabela.Xpoz[el][0]
+                trY=self.tabela.Xpoz[el][1]
+                for i in range(trX-2,trX+3):
+                    for j in range(trY-2,trY+3):
+                        if self.granice_dimenzija(i-1,j-1):
+                            if self.proveri_pesaka(igrac,el,i,j):
+                                lista_pomeraja.append([i,j,el])
+        else:
+            for el in range(2):
+                trX=self.tabela.Opoz[el][0]
+                trY=self.tabela.Opoz[el][1]
+                for i in range(trX-2,trX+3):
+                    for j in range(trY-2,trY+3):
+                        if self.granice_dimenzija(i-1,j-1):
+                            if self.proveri_pesaka(igrac,el,i,j):
+                                lista_pomeraja.append([i,j,el])
+        return lista_pomeraja
+
       
-                                                
+    def lista_mogucih_zidova(self,igrac):
+        lista_zidova=[]
+        lista_boja=["Z","P"]
+        for boja in lista_boja:
+            for i in range(1,self.tabela.dimX):
+                for j in range(1,self.tabela.dimY):
+                    if self.proveri_zid(igrac,boja,i,j):
+                       # i=konverzija_zidova(str(i)) if(i<=9) else ord(i)-ord('A')+10
+                       # j=konverzija_zidova(str(j))
+                        lista_zidova.append([boja,i,j])
+        return lista_zidova
+
+
+
 
     def granice_dimenzija(self,i,j):
-        return False if i<0 and i>self.tabela.dimX and j<0 and j>self.tabela.dimY else True
+        return False if i<0 or i>self.tabela.dimX or j<0 or j>self.tabela.dimY else True
     def postavi_racunar(self,p):
        if(p=="DA" or "da"):
             self.IgracX.racunar=True 
