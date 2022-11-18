@@ -1,4 +1,5 @@
 
+
 class Pion:
     def __init__(self,trX,trY,rednibroj,name):
         self.name=name
